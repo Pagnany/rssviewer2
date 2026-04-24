@@ -11,7 +11,7 @@ pub fn run() {
         .plugin(tauri_plugin_window_state::Builder::new().build())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![test_http])
+        .invoke_handler(tauri::generate_handler![test_http, get_rssfeed_channels])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -32,7 +32,7 @@ pub struct RssFeedChannel {
     pub id: i32,
     pub name: String,
     pub url: String,
-    pub active: bool,
+    pub active: i32,
 }
 
 #[tauri::command]
@@ -48,4 +48,21 @@ async fn test_http(url: &str) -> Result<String, String> {
     let body = res.text().await.map_err(|e| e.to_string())?;
     println!("Response: {}", body);
     Ok(body)
+}
+
+#[tauri::command]
+async fn get_rssfeed_channels() -> Result<String, String> {
+    let url = "https://www.pagnany.de/api/rss.php";
+    let params = [("action", "get_channels")];
+    let client = reqwest::Client::new();
+    let res = client
+        .post(url)
+        .form(&params)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let body = res.text().await.map_err(|e| e.to_string())?;
+    let channels: Vec<RssFeedChannel> = serde_json::from_str(&body).map_err(|e| e.to_string())?;
+    Ok(format!("{:?}", channels))
 }

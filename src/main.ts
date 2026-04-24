@@ -9,7 +9,7 @@ window.addEventListener("DOMContentLoaded", () => {
   document.querySelector("#rss-refresh")!.addEventListener("click", async (e) => {
     e.preventDefault();
 
-    invoke('test_http', { url: 'https://www.pagnany.de/' }).then((result: any) => {
+    invoke('get_rssfeed_channels').then((result: any) => {
       rssFeedD1!.textContent = result;
     })
       .catch((error) => console.error(error));
