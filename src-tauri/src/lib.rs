@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use tauri_plugin_http::reqwest;
+use tauri_plugin_http::reqwest::header::USER_AGENT;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -36,7 +37,14 @@ pub struct RssFeedChannel {
 
 #[tauri::command]
 async fn test_http(url: &str) -> Result<String, String> {
-    let res = reqwest::get(url).await.map_err(|e| e.to_string())?;
+    let client = reqwest::Client::new();
+    let res = client
+        .get(url)
+        .header(USER_AGENT, "Rssviewer2/0.0.0")
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
     let body = res.text().await.map_err(|e| e.to_string())?;
     println!("Response: {}", body);
     Ok(body)
