@@ -1,4 +1,4 @@
-// import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "@tauri-apps/api/core";
 import { fetch } from '@tauri-apps/plugin-http';
 
 let rssFeedD1: HTMLElement | null;
@@ -15,6 +15,9 @@ window.addEventListener("DOMContentLoaded", () => {
       method: 'GET',
     });
     rssFeedD1!.textContent = response.status + " " + response.statusText;
+
+    invoke('test_http', { url: 'https://www.pagnany.de/' })
+      .catch((error) => console.error(error));
   });
 
   // Go to Top Button Click
