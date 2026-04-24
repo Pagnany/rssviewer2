@@ -1,29 +1,25 @@
 // import { invoke } from "@tauri-apps/api/core";
 import { fetch } from '@tauri-apps/plugin-http';
 
-// let greetInputEl: HTMLInputElement | null;
-// let greetMsgEl: HTMLElement | null;
-
-// async function greet() {
-//   if (greetMsgEl && greetInputEl) {
-//     // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-//     greetMsgEl.textContent = await invoke("greet", {
-//       name: greetInputEl.value,
-//     });
-//   }
-// }
+let rssFeedD1: HTMLElement | null;
 
 window.addEventListener("DOMContentLoaded", () => {
-  // greetInputEl = document.querySelector("#greet-input");
-  // greetMsgEl = document.querySelector("#greet-msg");
-  document.querySelector("#greet-form")?.addEventListener("submit", async (e) => {
+  rssFeedD1 = document.querySelector("#rss-feed");
+
+  // Refresh Button Click
+  document.querySelector("#rss-refresh")!.addEventListener("click", async (e) => {
     e.preventDefault();
 
+    // Example of using the fetch API to make an HTTP request
     const response = await fetch('https://www.google.com/', {
       method: 'GET',
     });
-    console.log(response.status); // e.g. 200
-    console.log(response.statusText); // e.g. "OK"
+    rssFeedD1!.textContent = response.status + " " + response.statusText;
+  });
+
+  // Go to Top Button Click
+  document.getElementById("go-top")!.addEventListener("click", () => {
+    window.scrollTo(0, 0);
   });
 });
 
