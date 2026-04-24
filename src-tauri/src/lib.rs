@@ -7,9 +7,10 @@ pub fn run() {
     std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_window_state::Builder::new().build())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, test_http])
+        .invoke_handler(tauri::generate_handler![test_http])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -34,14 +35,9 @@ pub struct RssFeedChannel {
 }
 
 #[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
-#[tauri::command]
-async fn test_http(url: &str) -> Result<(), String> {
+async fn test_http(url: &str) -> Result<String, String> {
     let res = reqwest::get(url).await.map_err(|e| e.to_string())?;
     let body = res.text().await.map_err(|e| e.to_string())?;
     println!("Response: {}", body);
-    Ok(())
+    Ok(body)
 }

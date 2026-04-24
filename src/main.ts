@@ -1,5 +1,4 @@
 import { invoke } from "@tauri-apps/api/core";
-import { fetch } from '@tauri-apps/plugin-http';
 
 let rssFeedD1: HTMLElement | null;
 
@@ -10,13 +9,9 @@ window.addEventListener("DOMContentLoaded", () => {
   document.querySelector("#rss-refresh")!.addEventListener("click", async (e) => {
     e.preventDefault();
 
-    // Example of using the fetch API to make an HTTP request
-    const response = await fetch('https://www.google.com/', {
-      method: 'GET',
-    });
-    rssFeedD1!.textContent = response.status + " " + response.statusText;
-
-    invoke('test_http', { url: 'https://www.pagnany.de/' })
+    invoke('test_http', { url: 'https://www.pagnany.de/' }).then((result: any) => {
+      rssFeedD1!.textContent = result;
+    })
       .catch((error) => console.error(error));
   });
 
