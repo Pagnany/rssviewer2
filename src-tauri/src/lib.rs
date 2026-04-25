@@ -1,5 +1,5 @@
 use chrono::{DateTime, Local, Utc};
-use futures::{stream, SinkExt, StreamExt};
+use futures::{stream, StreamExt};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tauri_plugin_http::reqwest;
@@ -39,7 +39,7 @@ pub struct RssFeedChannel {
 }
 
 #[tauri::command]
-async fn get_rssfeeds() -> Result<String, String> {
+async fn get_rssfeeds() -> Result<Vec<RssFeed>, String> {
     // Only active channels
     let channels = get_rssfeed_channels()
         .await?
@@ -63,8 +63,6 @@ async fn get_rssfeeds() -> Result<String, String> {
                     .map_err(|e| e.to_string())?;
 
                 let body = res.text().await.map_err(|e| e.to_string())?;
-                println!("Fetched {}: {} bytes", channel.name, body.len());
-                // return body
                 Ok(body)
             }
         })
@@ -73,7 +71,7 @@ async fn get_rssfeeds() -> Result<String, String> {
         .await;
 
     // Filter and parse
-    let rssfeeditems: Vec<RssFeed> = results
+    let mut rssfeeditems: Vec<RssFeed> = results
         .into_iter()
         .filter_map(|res| match res {
             Ok(feed) => Some(get_items_form_feed(&feed)),
@@ -85,11 +83,15 @@ async fn get_rssfeeds() -> Result<String, String> {
         .flatten()
         .collect();
 
-    for item in rssfeeditems.iter().clone() {
-        println!("{} - {}", item.header, item.url);
-    }
+    // Sort, max anz items, fix hyperlinks and images
+    rssfeeditems.sort_by(|a, b| b.date.cmp(&a.date));
+    rssfeeditems.truncate(100);
+    rssfeeditems.iter_mut().for_each(|item| {
+        item.description = replace_img_tag_in_discription(&item.description);
+        item.description = add_a_tag_blank_in_discription(&item.description);
+    });
 
-    Ok(format!("{:?}", rssfeeditems))
+    Ok(rssfeeditems)
 }
 
 async fn get_rssfeed_channels() -> Result<Vec<RssFeedChannel>, String> {
@@ -160,4 +162,16 @@ fn get_items_form_feed(feed: &str) -> Vec<RssFeed> {
     }
 
     rss_feed_vec
+}
+
+fn replace_img_tag_in_discription(discription: &str) -> String {
+    let re = Regex::new(r#"<img\s.*?>"#).unwrap();
+    let result = re.replace_all(&discription, "<br /> *PICTURE* <br />");
+    result.to_string()
+}
+
+fn add_a_tag_blank_in_discription(discription: &str) -> String {
+    let re = Regex::new(r#"<a"#).unwrap();
+    let result = re.replace_all(&discription, "<a target=\"_blank\"");
+    result.to_string()
 }
