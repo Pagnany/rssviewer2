@@ -11,3 +11,6 @@ deno task tauri dev
 
 Release Build:
 deno task tauri build
+
+on linux you may need the command:
+NO_STRIP=true deno task tauri build
