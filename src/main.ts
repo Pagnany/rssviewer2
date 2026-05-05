@@ -10,7 +10,6 @@ window.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
 
     invoke('get_rssfeeds').then((message: any) => {
-      rssFeedD1!.textContent = message;
       let rssDate = "";
       message.forEach((item: any) => {
         rssDate += "<article>";

@@ -74,7 +74,13 @@ async fn get_rssfeeds() -> Result<Vec<RssFeed>, String> {
     let mut rssfeeditems: Vec<RssFeed> = results
         .into_iter()
         .filter_map(|res| match res {
-            Ok(feed) => Some(get_items_form_feed(&feed)),
+            Ok(feed) => match get_items_form_feed(&feed) {
+                Ok(items) => Some(items),
+                Err(e) => {
+                    eprintln!("Error parsing feed: {} \n {:#?}", e, feed);
+                    None
+                }
+            },
             Err(e) => {
                 eprintln!("Error fetching feed: {}", e);
                 None
@@ -110,10 +116,10 @@ async fn get_rssfeed_channels() -> Result<Vec<RssFeedChannel>, String> {
     Ok(channels)
 }
 
-fn get_items_form_feed(feed: &str) -> Vec<RssFeed> {
+fn get_items_form_feed(feed: &str) -> Result<Vec<RssFeed>, String> {
     let mut rss_feed_vec = Vec::new();
 
-    let doc = roxmltree::Document::parse(feed).unwrap();
+    let doc = roxmltree::Document::parse(feed).map_err(|e| e.to_string())?;
     let mut rss_feed_name = String::from("");
     let mut rss_feed_name_set = false;
     for node in doc.descendants() {
@@ -122,32 +128,36 @@ fn get_items_form_feed(feed: &str) -> Vec<RssFeed> {
 
             for child in node.children() {
                 match child.tag_name().name() {
-                    "guid" => rss_feed.id = child.text().unwrap().to_string(),
-                    "title" => rss_feed.header = child.text().unwrap().to_string(),
-                    "description" => rss_feed.description = child.text().unwrap().to_string(),
-                    "link" => rss_feed.url = child.text().unwrap().to_string(),
+                    "guid" => rss_feed.id = child.text().unwrap_or("").to_string(),
+                    "title" => rss_feed.header = child.text().unwrap_or("").to_string(),
+                    "description" => rss_feed.description = child.text().unwrap_or("").to_string(),
+                    "link" => rss_feed.url = child.text().unwrap_or("").to_string(),
                     "pubDate" => {
-                        let utc_dt: DateTime<Utc> =
-                            DateTime::parse_from_rfc2822(child.text().unwrap())
-                                .unwrap()
-                                .with_timezone(&Utc);
-                        let date = utc_dt.with_timezone(&Local);
-                        rss_feed.date = date.format("%Y-%m-%d %H:%M").to_string();
+                        if let Some(date_str) = child.text() {
+                            if let Ok(utc_dt) = DateTime::parse_from_rfc2822(date_str) {
+                                let date = utc_dt.with_timezone(&Utc).with_timezone(&Local);
+                                rss_feed.date = date.format("%Y-%m-%d %H:%M").to_string();
+                            }
+                        }
                     }
                     "enclosure" => {
-                        if child.attribute("type").unwrap() == "image/jpeg" {
-                            rss_feed.image = child.attribute("url").unwrap().to_string();
+                        if child.attribute("type").unwrap_or("") == "image/jpeg" {
+                            if let Some(url) = child.attribute("url") {
+                                rss_feed.image = url.to_string();
+                            }
                         }
                     }
                     "encoded" => {
                         // find <img> tag in a non xml string and get the link in src=""
-                        let content_encoded = child.text().unwrap().to_string();
-                        let re = Regex::new(r#"<img src="([^"]*)""#).unwrap();
-                        let caps = re.captures(&content_encoded);
+                        if let Some(content_encoded) = child.text() {
+                            let content_encoded = content_encoded.to_string();
+                            let re = Regex::new(r#"<img src="([^"]*)""#).unwrap();
+                            let caps = re.captures(&content_encoded);
 
-                        if let Some(caps) = caps {
-                            let img_src = &caps[1];
-                            rss_feed.image = img_src.to_string();
+                            if let Some(caps) = caps {
+                                let img_src = &caps[1];
+                                rss_feed.image = img_src.to_string();
+                            }
                         }
                     }
                     _ => (),
@@ -156,12 +166,12 @@ fn get_items_form_feed(feed: &str) -> Vec<RssFeed> {
             rss_feed.feed_name = rss_feed_name.clone();
             rss_feed_vec.push(rss_feed);
         } else if node.tag_name().name() == "title" && !rss_feed_name_set {
-            rss_feed_name = node.text().unwrap().to_string();
+            rss_feed_name = node.text().unwrap_or("").to_string();
             rss_feed_name_set = true;
         }
     }
 
-    rss_feed_vec
+    Ok(rss_feed_vec)
 }
 
 fn replace_img_tag_in_discription(discription: &str) -> String {
