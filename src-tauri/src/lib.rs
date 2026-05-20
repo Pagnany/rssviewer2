@@ -172,14 +172,14 @@ fn get_items_form_feed(feed: &str) -> Result<Vec<RssFeed>, String> {
     Ok(rss_feed_vec)
 }
 
-fn replace_img_tag_in_description(discription: &str) -> String {
+fn replace_img_tag_in_description(description: &str) -> String {
     let re = Regex::new(r#"<img\s.*?>"#).unwrap();
-    let result = re.replace_all(discription, "<br /> *PICTURE* <br />");
+    let result = re.replace_all(description, "<br /> *PICTURE* <br />");
     result.to_string()
 }
 
-fn add_a_tag_blank_in_description(discription: &str) -> String {
+fn add_a_tag_blank_in_description(description: &str) -> String {
     let re = Regex::new(r#"<a"#).unwrap();
-    let result = re.replace_all(discription, "<a target=\"_blank\"");
+    let result = re.replace_all(description, "<a target=\"_blank\"");
     result.to_string()
 }
