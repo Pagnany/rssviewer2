@@ -20,6 +20,12 @@ pub fn run() {
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
+pub struct RssFeedResult {
+    pub rssfeeditems: Vec<RssFeed>,
+    pub errors: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct RssFeed {
     pub id: String,
     pub feed_name: String,
@@ -39,10 +45,13 @@ pub struct RssFeedChannel {
 }
 
 #[tauri::command]
-async fn get_rssfeeds() -> Result<Vec<RssFeed>, String> {
+async fn get_rssfeeds() -> Result<RssFeedResult, String> {
+    let mut errors = Vec::new();
+
     // Only active channels
     let channels = get_rssfeed_channels()
-        .await?
+        .await
+        .map_err(|e| format!("Error fetching channels: {}", e))?
         .into_iter()
         .filter(|c| c.active == 1)
         .collect::<Vec<_>>();
@@ -77,12 +86,12 @@ async fn get_rssfeeds() -> Result<Vec<RssFeed>, String> {
             Ok(feed) => match get_items_form_feed(&feed) {
                 Ok(items) => Some(items),
                 Err(e) => {
-                    eprintln!("Error parsing feed: {} \n {:#?}", e, feed);
+                    errors.push(format!("Error parsing feed: {}", e));
                     None
                 }
             },
             Err(e) => {
-                eprintln!("Error fetching feed: {}", e);
+                errors.push(format!("Error fetching feed: {}", e));
                 None
             }
         })
@@ -97,7 +106,12 @@ async fn get_rssfeeds() -> Result<Vec<RssFeed>, String> {
         item.description = add_a_tag_blank_in_description(&item.description);
     });
 
-    Ok(rssfeeditems)
+    let rssfeedresult = RssFeedResult {
+        rssfeeditems: rssfeeditems,
+        errors: errors,
+    };
+
+    Ok(rssfeedresult)
 }
 
 async fn get_rssfeed_channels() -> Result<Vec<RssFeedChannel>, String> {

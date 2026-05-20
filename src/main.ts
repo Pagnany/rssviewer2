@@ -1,9 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 
 let rssFeedD1: HTMLElement | null;
+let rssErrorD1: HTMLElement | null;
 
 window.addEventListener("DOMContentLoaded", () => {
   rssFeedD1 = document.querySelector("#rss-feed");
+  rssErrorD1 = document.querySelector("#rss-error");
 
   // Refresh Button Click
   document.querySelector("#rss-refresh")!.addEventListener("click", async (e) => {
@@ -11,7 +13,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
     invoke('get_rssfeeds').then((message: any) => {
       let rssDate = "";
-      message.forEach((item: any) => {
+      message.rssfeeditems.forEach((item: any) => {
         rssDate += "<article>";
         rssDate += "<p>" + item.feed_name + "</p>";
         rssDate += "<h4>" + item.header + "</h4>";
@@ -32,9 +34,15 @@ window.addEventListener("DOMContentLoaded", () => {
       });
 
       rssFeedD1!.innerHTML = rssDate;
+
+      let rssError = "";
+      message.errors.forEach((error: any) => {
+        rssError += "<p>" + error + "</p>";
+      });
+      rssErrorD1!.innerHTML = rssError;
     })
       .catch((error) => {
-        rssFeedD1!.textContent = error;
+        rssErrorD1!.textContent = error;
         console.error(error)
       });
   });
