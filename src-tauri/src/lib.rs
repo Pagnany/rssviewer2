@@ -93,8 +93,8 @@ async fn get_rssfeeds() -> Result<Vec<RssFeed>, String> {
     rssfeeditems.sort_by(|a, b| b.date.cmp(&a.date));
     rssfeeditems.truncate(100);
     rssfeeditems.iter_mut().for_each(|item| {
-        item.description = replace_img_tag_in_discription(&item.description);
-        item.description = add_a_tag_blank_in_discription(&item.description);
+        item.description = replace_img_tag_in_description(&item.description);
+        item.description = add_a_tag_blank_in_description(&item.description);
     });
 
     Ok(rssfeeditems)
@@ -122,6 +122,7 @@ fn get_items_form_feed(feed: &str) -> Result<Vec<RssFeed>, String> {
     let doc = roxmltree::Document::parse(feed).map_err(|e| e.to_string())?;
     let mut rss_feed_name = String::from("");
     let mut rss_feed_name_set = false;
+    let re = Regex::new(r#"<img src="([^"]*)""#).unwrap();
     for node in doc.descendants() {
         if node.tag_name().name() == "item" {
             let mut rss_feed: RssFeed = Default::default();
@@ -140,18 +141,15 @@ fn get_items_form_feed(feed: &str) -> Result<Vec<RssFeed>, String> {
                             }
                         }
                     }
-                    "enclosure" => {
-                        if child.attribute("type").unwrap_or("") == "image/jpeg" {
-                            if let Some(url) = child.attribute("url") {
-                                rss_feed.image = url.to_string();
-                            }
+                    "enclosure" if child.attribute("type").unwrap_or("") == "image/jpeg" => {
+                        if let Some(url) = child.attribute("url") {
+                            rss_feed.image = url.to_string();
                         }
                     }
                     "encoded" => {
                         // find <img> tag in a non xml string and get the link in src=""
                         if let Some(content_encoded) = child.text() {
                             let content_encoded = content_encoded.to_string();
-                            let re = Regex::new(r#"<img src="([^"]*)""#).unwrap();
                             let caps = re.captures(&content_encoded);
 
                             if let Some(caps) = caps {
@@ -174,14 +172,14 @@ fn get_items_form_feed(feed: &str) -> Result<Vec<RssFeed>, String> {
     Ok(rss_feed_vec)
 }
 
-fn replace_img_tag_in_discription(discription: &str) -> String {
+fn replace_img_tag_in_description(discription: &str) -> String {
     let re = Regex::new(r#"<img\s.*?>"#).unwrap();
-    let result = re.replace_all(&discription, "<br /> *PICTURE* <br />");
+    let result = re.replace_all(discription, "<br /> *PICTURE* <br />");
     result.to_string()
 }
 
-fn add_a_tag_blank_in_discription(discription: &str) -> String {
+fn add_a_tag_blank_in_description(discription: &str) -> String {
     let re = Regex::new(r#"<a"#).unwrap();
-    let result = re.replace_all(&discription, "<a target=\"_blank\"");
+    let result = re.replace_all(discription, "<a target=\"_blank\"");
     result.to_string()
 }
