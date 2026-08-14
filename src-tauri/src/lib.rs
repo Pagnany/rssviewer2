@@ -102,7 +102,11 @@ async fn get_rssfeeds() -> Result<RssFeedResult, String> {
     rssfeeditems.sort_by(|a, b| b.date.cmp(&a.date));
     rssfeeditems.truncate(100);
     rssfeeditems.iter_mut().for_each(|item| {
-        item.description = replace_img_tag_in_description(&item.description);
+        let (new_description, img) = replace_img_tag_in_description(&item.description);
+        if item.image.is_empty() {
+            item.image = img;
+        }
+        item.description = new_description;
         item.description = add_a_tag_blank_in_description(&item.description);
     });
 
@@ -186,10 +190,23 @@ fn get_items_form_feed(feed: &str) -> Result<Vec<RssFeed>, String> {
     Ok(rss_feed_vec)
 }
 
-fn replace_img_tag_in_description(description: &str) -> String {
+fn replace_img_tag_in_description(description: &str) -> (String, String) {
     let re = Regex::new(r#"<img\s.*?>"#).unwrap();
+
+    // get link in src of <img> tag
+    let img = if let Some(caps) = re.captures(description) {
+        let img_tag = &caps[0];
+        let src_re = Regex::new(r#"src="([^"]*)""#).unwrap();
+        if let Some(src_caps) = src_re.captures(img_tag) {
+            src_caps[1].to_string()
+        } else {
+            String::new()
+        }
+    } else {
+        String::new()
+    };
     let result = re.replace_all(description, "<br /> *PICTURE* <br />");
-    result.to_string()
+    (result.to_string(), img.to_string())
 }
 
 fn add_a_tag_blank_in_description(description: &str) -> String {
